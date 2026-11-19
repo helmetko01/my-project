@@ -1,0 +1,21 @@
+﻿# Environment & Secrets
+.env
+.env.*
+!.env.example
+credentials.json
+mcp_config.json
+
+# Dependencies & Virtual Environments
+.venv/
+env/
+node_modules/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
