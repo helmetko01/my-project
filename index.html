@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>모던 웹 계산기</title>
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      --calc-bg: rgba(30, 41, 59, 0.7);
+      --calc-border: rgba(255, 255, 255, 0.1);
+      --calc-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+      --display-bg: rgba(15, 23, 42, 0.6);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --btn-num-bg: rgba(51, 65, 85, 0.8);
+      --btn-num-hover: rgba(71, 85, 105, 0.9);
+      --btn-num-text: #f8fafc;
+      --btn-fn-bg: rgba(71, 85, 105, 0.7);
+      --btn-fn-hover: rgba(100, 116, 139, 0.8);
+      --btn-fn-text: #38bdf8;
+      --btn-op-bg: #3b82f6;
+      --btn-op-hover: #2563eb;
+      --btn-op-text: #ffffff;
+      --btn-eq-bg: #10b981;
+      --btn-eq-hover: #059669;
+      --btn-eq-text: #ffffff;
+      --btn-clear-bg: #ef4444;
+      --btn-clear-hover: #dc2626;
+      --btn-clear-text: #ffffff;
+      --history-bg: rgba(15, 23, 42, 0.95);
+    }
+
+    [data-theme="light"] {
+      --bg-gradient: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      --calc-bg: rgba(255, 255, 255, 0.85);
+      --calc-border: rgba(255, 255, 255, 0.6);
+      --calc-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
+      --display-bg: #f8fafc;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --btn-num-bg: #ffffff;
+      --btn-num-hover: #f1f5f9;
+      --btn-num-text: #1e293b;
+      --btn-fn-bg: #e2e8f0;
+      --btn-fn-hover: #cbd5e1;
+      --btn-fn-text: #0284c7;
+      --btn-op-bg: #3b82f6;
+      --btn-op-hover: #2563eb;
+      --btn-op-text: #ffffff;
+      --btn-eq-bg: #10b981;
+      --btn-eq-hover: #059669;
+      --btn-eq-text: #ffffff;
+      --btn-clear-bg: #fee2e2;
+      --btn-clear-hover: #fecaca;
+      --btn-clear-text: #ef4444;
+      --history-bg: rgba(255, 255, 255, 0.98);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      padding: 16px;
+      transition: background 0.3s ease;
+    }
+
+    .calculator-container {
+      position: relative;
+      width: 100%;
+      max-width: 360px;
+      background: var(--calc-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--calc-border);
+      border-radius: 28px;
+      padding: 24px 20px 20px 20px;
+      box-shadow: var(--calc-shadow);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      overflow: hidden;
+    }
+
+    /* 상단 헤더 툴바 */
+    .top-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 4px;
+    }
+
+    .app-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      padding: 6px 8px;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      background: rgba(148, 163, 184, 0.15);
+      color: var(--text-main);
+    }
+
+    /* 디스플레이 화면 */
+    .display-screen {
+      background: var(--display-bg);
+      border-radius: 20px;
+      padding: 16px 20px;
+      text-align: right;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      min-height: 105px;
+      border: 1px solid var(--calc-border);
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+      overflow: hidden;
+    }
+
+    .history-expression {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      min-height: 1.4em;
+      white-space: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .history-expression::-webkit-scrollbar {
+      display: none;
+    }
+
+    .current-value {
+      font-size: 2.5rem;
+      font-weight: 600;
+      line-height: 1.2;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+      transition: font-size 0.15s ease;
+    }
+
+    .current-value::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* 키패드 그리드 */
+    .keypad-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    .btn {
+      height: 62px;
+      border-radius: 18px;
+      border: 1px solid transparent;
+      outline: none;
+      font-size: 1.35rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.1s ease, background 0.15s ease, filter 0.15s ease;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .btn:active {
+      transform: scale(0.94);
+      filter: brightness(0.9);
+    }
+
+    .btn-num {
+      background: var(--btn-num-bg);
+      color: var(--btn-num-text);
+      border-color: var(--calc-border);
+    }
+
+    .btn-num:hover {
+      background: var(--btn-num-hover);
+    }
+
+    .btn-fn {
+      background: var(--btn-fn-bg);
+      color: var(--btn-fn-text);
+      font-size: 1.2rem;
+    }
+
+    .btn-fn:hover {
+      background: var(--btn-fn-hover);
+    }
+
+    .btn-clear {
+      background: var(--btn-clear-bg);
+      color: var(--btn-clear-text);
+      font-weight: 600;
+    }
+
+    .btn-clear:hover {
+      background: var(--btn-clear-hover);
+    }
+
+    .btn-op {
+      background: var(--btn-op-bg);
+      color: var(--btn-op-text);
+      font-size: 1.45rem;
+      font-weight: 600;
+    }
+
+    .btn-op:hover {
+      background: var(--btn-op-hover);
+    }
+
+    .btn-op.active-op {
+      filter: brightness(1.2);
+      box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+      border-color: #ffffff;
+    }
+
+    .btn-eq {
+      background: var(--btn-eq-bg);
+      color: var(--btn-eq-text);
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .btn-eq:hover {
+      background: var(--btn-eq-hover);
+    }
+
+    /* 히스토리 모달 레이어 */
+    .history-drawer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--history-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 10;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .history-drawer.open {
+      transform: translateY(0);
+    }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--calc-border);
+      padding-bottom: 12px;
+    }
+
+    .history-header h3 {
+      font-size: 1.1rem;
+      color: var(--text-main);
+    }
+
+    .history-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-right: 4px;
+    }
+
+    .history-list::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .history-list::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.3);
+      border-radius: 4px;
+    }
+
+    .history-item {
+      background: rgba(148, 163, 184, 0.1);
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .history-item:hover {
+      background: rgba(59, 130, 246, 0.15);
+    }
+
+    .history-expr {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .history-res {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--text-main);
+      text-align: right;
+    }
+
+    .history-empty {
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 40px;
+      font-size: 0.95rem;
+    }
+
+    .history-footer {
+      display: flex;
+      justify-content: space-between;
+      padding-top: 8px;
+    }
+
+    .btn-sub {
+      background: rgba(148, 163, 184, 0.15);
+      border: 1px solid var(--calc-border);
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-sub:hover {
+      background: rgba(148, 163, 184, 0.3);
+    }
+
+    /* 하단 단축키 가이드 */
+    .keyboard-guide {
+      margin-top: 14px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .keyboard-guide kbd {
+      background: rgba(148, 163, 184, 0.2);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-family: monospace;
+      color: var(--text-main);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="calculator-container" id="calculator">
+    <!-- 상단 툴바 -->
+    <div class="top-toolbar">
+      <div class="app-title">
+        <span>⚡</span> 계산기
+      </div>
+      <div class="toolbar-actions">
+        <button class="icon-btn" id="historyToggleBtn" title="계산 기록">🕒 기록</button>
+        <button class="icon-btn" id="themeToggleBtn" title="테마 변경">🌙 테마</button>
+      </div>
+    </div>
+
+    <!-- 디스플레이 -->
+    <div class="display-screen">
+      <div class="history-expression" id="exprDisplay"></div>
+      <div class="current-value" id="valDisplay">0</div>
+    </div>
+
+    <!-- 키패드 -->
+    <div class="keypad-grid">
+      <!-- Row 1 -->
+      <button class="btn btn-clear" data-action="all-clear" title="모두 지우기 (Esc)">AC</button>
+      <button class="btn btn-fn" data-action="backspace" title="지우기 (Backspace)">⌫</button>
+      <button class="btn btn-fn" data-action="percent" title="백분율 (%)">%</button>
+      <button class="btn btn-op" data-op="÷" title="나누기 (/)">÷</button>
+
+      <!-- Row 2 -->
+      <button class="btn btn-num" data-num="7">7</button>
+      <button class="btn btn-num" data-num="8">8</button>
+      <button class="btn btn-num" data-num="9">9</button>
+      <button class="btn btn-op" data-op="×" title="곱하기 (*)">×</button>
+
+      <!-- Row 3 -->
+      <button class="btn btn-num" data-num="4">4</button>
+      <button class="btn btn-num" data-num="5">5</button>
+      <button class="btn btn-num" data-num="6">6</button>
+      <button class="btn btn-op" data-op="-" title="빼기 (-)">−</button>
+
+      <!-- Row 4 -->
+      <button class="btn btn-num" data-num="1">1</button>
+      <button class="btn btn-num" data-num="2">2</button>
+      <button class="btn btn-num" data-num="3">3</button>
+      <button class="btn btn-op" data-op="+" title="더하기 (+)">+</button>
+
+      <!-- Row 5 -->
+      <button class="btn btn-fn" data-action="negate" title="부호 반전">±</button>
+      <button class="btn btn-num" data-num="0">0</button>
+      <button class="btn btn-num" data-action="decimal">.</button>
+      <button class="btn btn-eq" data-action="calculate" title="계산 (Enter)">=</button>
+    </div>
+
+    <!-- 히스토리 드로어 레이어 -->
+    <div class="history-drawer" id="historyDrawer">
+      <div class="history-header">
+        <h3>계산 내역</h3>
+        <button class="icon-btn" id="historyCloseBtn">✕ 닫기</button>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">계산 내역이 없습니다.</div>
+      </div>
+      <div class="history-footer">
+        <button class="btn-sub" id="historyClearBtn">내역 지우기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="keyboard-guide">
+    키보드 지원: <kbd>0-9</kbd>, <kbd>+</kbd> <kbd>-</kbd> <kbd>*</kbd> <kbd>/</kbd>, <kbd>Enter</kbd>(=), <kbd>Esc</kbd>(AC), <kbd>Backspace</kbd>(⌫)
+  </div>
+
+  <script>
+    (function () {
+      // 상태 관리
+      let currentValue = '0';
+      let previousValue = null;
+      let operator = null;
+      let shouldResetDisplay = false;
+      let history = [];
+
+      // DOM 요소
+      const exprDisplay = document.getElementById('exprDisplay');
+      const valDisplay = document.getElementById('valDisplay');
+      const themeToggleBtn = document.getElementById('themeToggleBtn');
+      const historyToggleBtn = document.getElementById('historyToggleBtn');
+      const historyDrawer = document.getElementById('historyDrawer');
+      const historyCloseBtn = document.getElementById('historyCloseBtn');
+      const historyClearBtn = document.getElementById('historyClearBtn');
+      const historyList = document.getElementById('historyList');
+      const opButtons = document.querySelectorAll('.btn-op');
+
+      // 로컬 스토리지에서 테마 불러오기
+      const savedTheme = localStorage.getItem('calc_theme') || 'dark';
+      document.body.setAttribute('data-theme', savedTheme);
+      updateThemeIcon(savedTheme);
+
+      // 테마 토글 핸들러
+      themeToggleBtn.addEventListener('click', () => {
+        const currentTheme = document.body.getAttribute('data-theme') || 'dark';
+        const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.body.setAttribute('data-theme', nextTheme);
+        localStorage.setItem('calc_theme', nextTheme);
+        updateThemeIcon(nextTheme);
+      });
+
+      function updateThemeIcon(theme) {
+        themeToggleBtn.textContent = theme === 'dark' ? '☀️ 라이트' : '🌙 다크';
+      }
+
+      // 화면 업데이트 함수
+      function updateDisplay() {
+        // 숫자 길이에 따른 폰트 크기 반응형 조절
+        const len = currentValue.length;
+        if (len > 14) {
+          valDisplay.style.fontSize = '1.5rem';
+        } else if (len > 9) {
+          valDisplay.style.fontSize = '1.9rem';
+        } else {
+          valDisplay.style.fontSize = '2.5rem';
+        }
+
+        // 천 단위 콤마 포맷팅 (지수 표현식 또는 소수점 입력 중 예외 처리)
+        valDisplay.textContent = formatNumberDisplay(currentValue);
+
+        if (operator && previousValue !== null) {
+          exprDisplay.textContent = `${formatNumberDisplay(previousValue)} ${operator}`;
+        } else {
+          exprDisplay.textContent = '';
+        }
+
+        // 활성 연산자 버튼 강조
+        opButtons.forEach(btn => {
+          if (operator && btn.getAttribute('data-op') === operator && shouldResetDisplay) {
+            btn.classList.add('active-op');
+          } else {
+            btn.classList.remove('active-op');
+          }
+        });
+      }
+
+      function formatNumberDisplay(numStr) {
+        if (!numStr || numStr === 'Error') return numStr;
+        if (numStr.includes('e') || numStr.includes('E')) return numStr;
+
+        const parts = numStr.split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        return parts.join('.');
+      }
+
+      // 숫자 입력
+      function inputNumber(digit) {
+        if (currentValue === 'Error') {
+          currentValue = '0';
+        }
+
+        if (shouldResetDisplay) {
+          currentValue = digit;
+          shouldResetDisplay = false;
+        } else {
+          if (currentValue === '0') {
+            currentValue = digit;
+          } else {
+            if (currentValue.length < 16) {
+              currentValue += digit;
+            }
+          }
+        }
+        updateDisplay();
+      }
+
+      // 소수점 입력
+      function inputDecimal() {
+        if (currentValue === 'Error') {
+          currentValue = '0';
+        }
+        if (shouldResetDisplay) {
+          currentValue = '0.';
+          shouldResetDisplay = false;
+        } else if (!currentValue.includes('.')) {
+          currentValue += '.';
+        }
+        updateDisplay();
+      }
+
+      // 백스페이스
+      function handleBackspace() {
+        if (currentValue === 'Error' || shouldResetDisplay) {
+          currentValue = '0';
+          shouldResetDisplay = false;
+        } else {
+          currentValue = currentValue.length > 1 ? currentValue.slice(0, -1) : '0';
+        }
+        updateDisplay();
+      }
+
+      // AC (전체 초기화)
+      function handleAllClear() {
+        currentValue = '0';
+        previousValue = null;
+        operator = null;
+        shouldResetDisplay = false;
+        updateDisplay();
+      }
+
+      // 부호 반전 (±)
+      function handleNegate() {
+        if (currentValue === '0' || currentValue === 'Error') return;
+        currentValue = currentValue.startsWith('-') ? currentValue.slice(1) : '-' + currentValue;
+        updateDisplay();
+      }
+
+      // 퍼센트 (%)
+      function handlePercent() {
+        if (currentValue === 'Error') return;
+        const val = parseFloat(currentValue);
+        if (isNaN(val)) return;
+
+        // 이전 연산자가 곱셈/나눗셈이 아닌 덧셈/뺄셈일 때 이전 값의 비율로 계산 (상용 계산기 동작)
+        if (previousValue !== null && (operator === '+' || operator === '−')) {
+          const base = parseFloat(previousValue);
+          currentValue = roundPrecision((base * val) / 100).toString();
+        } else {
+          currentValue = roundPrecision(val / 100).toString();
+        }
+        updateDisplay();
+      }
+
+      // 연산자 선택
+      function handleOperator(nextOp) {
+        if (currentValue === 'Error') return;
+
+        if (operator && shouldResetDisplay) {
+          operator = nextOp;
+          updateDisplay();
+          return;
+        }
+
+        if (previousValue === null) {
+          previousValue = currentValue;
+        } else if (operator) {
+          const result = compute(previousValue, currentValue, operator);
+          if (result === 'Error') {
+            currentValue = 'Error';
+            previousValue = null;
+            operator = null;
+            shouldResetDisplay = true;
+            updateDisplay();
+            return;
+          }
+          currentValue = result.toString();
+          previousValue = result.toString();
+        }
+
+        operator = nextOp;
+        shouldResetDisplay = true;
+        updateDisplay();
+      }
+
+      // 계산 실행 (=)
+      function handleEquals() {
+        if (!operator || previousValue === null || currentValue === 'Error') return;
+
+        const expr = `${formatNumberDisplay(previousValue)} ${operator} ${formatNumberDisplay(currentValue)}`;
+        const result = compute(previousValue, currentValue, operator);
+
+        if (result === 'Error') {
+          currentValue = 'Error';
+        } else {
+          currentValue = result.toString();
+          addHistory(expr, currentValue);
+        }
+
+        previousValue = null;
+        operator = null;
+        shouldResetDisplay = true;
+        exprDisplay.textContent = expr + ' =';
+        updateDisplay();
+      }
+
+      // 사칙연산 계산기 코어 로직
+      function compute(aStr, bStr, op) {
+        const a = parseFloat(aStr);
+        const b = parseFloat(bStr);
+        if (isNaN(a) || isNaN(b)) return '0';
+
+        let res = 0;
+        switch (op) {
+          case '+':
+            res = a + b;
+            break;
+          case '-':
+          case '−':
+            res = a - b;
+            break;
+          case '×':
+          case '*':
+            res = a * b;
+            break;
+          case '÷':
+          case '/':
+            if (b === 0) return 'Error';
+            res = a / b;
+            break;
+          default:
+            return b;
+        }
+        return roundPrecision(res);
+      }
+
+      // 부동 소수점 정밀도 보정 (최대 12자리)
+      function roundPrecision(num) {
+        if (isNaN(num) || !isFinite(num)) return 'Error';
+        return parseFloat(num.toPrecision(12));
+      }
+
+      // 히스토리 관리
+      function addHistory(expr, result) {
+        history.unshift({ expr, result });
+        if (history.length > 30) history.pop();
+        renderHistory();
+      }
+
+      function renderHistory() {
+        if (history.length === 0) {
+          historyList.innerHTML = '<div class="history-empty">계산 내역이 없습니다.</div>';
+          return;
+        }
+
+        historyList.innerHTML = history.map((item, idx) => `
+          <div class="history-item" data-index="${idx}">
+            <div class="history-expr">${item.expr} =</div>
+            <div class="history-res">${formatNumberDisplay(item.result)}</div>
+          </div>
+        `).join('');
+
+        historyList.querySelectorAll('.history-item').forEach(el => {
+          el.addEventListener('click', () => {
+            const idx = el.getAttribute('data-index');
+            if (history[idx]) {
+              currentValue = history[idx].result;
+              shouldResetDisplay = true;
+              updateDisplay();
+              closeHistory();
+            }
+          });
+        });
+      }
+
+      function openHistory() {
+        historyDrawer.classList.add('open');
+      }
+
+      function closeHistory() {
+        historyDrawer.classList.remove('open');
+      }
+
+      historyToggleBtn.addEventListener('click', openHistory);
+      historyCloseBtn.addEventListener('click', closeHistory);
+      historyClearBtn.addEventListener('click', () => {
+        history = [];
+        renderHistory();
+      });
+
+      // 버튼 이벤트 바인딩
+      document.querySelector('.keypad-grid').addEventListener('click', (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+
+        const num = btn.getAttribute('data-num');
+        const op = btn.getAttribute('data-op');
+        const action = btn.getAttribute('data-action');
+
+        if (num !== null) {
+          inputNumber(num);
+        } else if (op !== null) {
+          handleOperator(op);
+        } else if (action !== null) {
+          switch (action) {
+            case 'decimal':
+              inputDecimal();
+              break;
+            case 'calculate':
+              handleEquals();
+              break;
+            case 'all-clear':
+              handleAllClear();
+              break;
+            case 'backspace':
+              handleBackspace();
+              break;
+            case 'negate':
+              handleNegate();
+              break;
+            case 'percent':
+              handlePercent();
+              break;
+          }
+        }
+      });
+
+      // 키보드 지원
+      window.addEventListener('keydown', (e) => {
+        // 단축키 충돌 방지 (Ctrl/Cmd 제외)
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+        if (e.key >= '0' && e.key <= '9') {
+          inputNumber(e.key);
+        } else if (e.key === '.') {
+          inputDecimal();
+        } else if (e.key === '+' || e.key === '-') {
+          handleOperator(e.key === '-' ? '−' : '+');
+        } else if (e.key === '*') {
+          handleOperator('×');
+        } else if (e.key === '/') {
+          e.preventDefault(); // 브라우저 검색 단축키 방지
+          handleOperator('÷');
+        } else if (e.key === 'Enter' || e.key === '=') {
+          e.preventDefault();
+          handleEquals();
+        } else if (e.key === 'Backspace') {
+          handleBackspace();
+        } else if (e.key === 'Escape') {
+          handleAllClear();
+        } else if (e.key === '%') {
+          handlePercent();
+        }
+      });
+
+      // 초기 렌더링
+      updateDisplay();
+    })();
+  </script>
+</body>
+</html>
